@@ -1,0 +1,12 @@
+[project]
+name = "vision2ui-server"
+version = "0.1.0"
+description = "Vision2UI server"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.25.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+]
+
