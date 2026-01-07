@@ -1,5 +1,4 @@
 import * as child_process from 'child_process';
-import FormData from 'form-data';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as https from 'https';
@@ -548,13 +547,19 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 		const { filename, content } = message;
 
 		try {
-			// Create FormData
-			const formData = new FormData();
-			const buffer = Buffer.from(content, 'utf-8');
-			formData.append('file', buffer, {
-				filename: filename,
-				contentType: 'text/markdown',
-			});
+			// Build a simple multipart/form-data request body manually to avoid external deps
+			const boundary = '----Vision2UIMultipart' + Math.random().toString(16).slice(2);
+			const bodyParts = [
+				`--${boundary}`,
+				`Content-Disposition: form-data; name="file"; filename="${filename}"`,
+				'Content-Type: text/markdown',
+				'',
+				content,
+				`--${boundary}--`,
+				'',
+			];
+			const body = bodyParts.join('\r\n');
+			const bodyBuffer = Buffer.from(body, 'utf-8');
 
 			const urlObj = new URL(`${API_BASE_URL}/components/upload`);
 			const isHttps = urlObj.protocol === 'https:';
@@ -566,7 +571,10 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 					port: urlObj.port || (isHttps ? 443 : 80),
 					path: urlObj.pathname,
 					method: 'POST',
-					headers: formData.getHeaders(),
+					headers: {
+						'Content-Type': `multipart/form-data; boundary=${boundary}`,
+						'Content-Length': bodyBuffer.length,
+					},
 					timeout: 30000,
 				};
 
@@ -606,7 +614,8 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 					reject(new Error('Request timeout'));
 				});
 
-				formData.pipe(req);
+				req.write(bodyBuffer);
+				req.end();
 			});
 
 			vscode.window.showInformationMessage(
