@@ -50,23 +50,36 @@ async function startApiServer(extensionPath: string): Promise<void> {
 	}
 
 	// Determine Python command
-	const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-
-	// Start the server process
 	const serverScript = path.join(serverPath, 'src', 'api_server.py');
 
-	// Check if we should use uv (if available) or direct python
+	// Check for virtual environment first
 	let command: string;
 	let args: string[];
 
-	// Try to use uv if available, otherwise use python directly
-	const useUv = await checkCommandAvailable('uv');
-	if (useUv) {
-		command = 'uv';
-		args = ['run', 'python', serverScript];
-	} else {
-		command = pythonCommand;
+	// Check if .venv exists in the server directory
+	const venvPythonPath =
+		process.platform === 'win32'
+			? path.join(serverPath, '.venv', 'Scripts', 'python.exe')
+			: path.join(serverPath, '.venv', 'bin', 'python');
+
+	if (fs.existsSync(venvPythonPath)) {
+		// Use the virtual environment's Python directly
+		command = venvPythonPath;
 		args = [serverScript];
+		console.log(`Starting API server with venv Python: ${command} ${args.join(' ')}`);
+	} else {
+		// Fallback to uv or system python
+		const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+		const useUv = await checkCommandAvailable('uv');
+
+		if (useUv) {
+			command = 'uv';
+			args = ['run', 'python', serverScript];
+		} else {
+			command = pythonCommand;
+			args = [serverScript];
+		}
+		console.log(`Starting API server with command: ${command} ${args.join(' ')}`);
 	}
 
 	apiServerProcess = child_process.spawn(command, args, {
@@ -438,7 +451,16 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 					'mcp.json'
 				);
 			} else if (platform === 'win32') {
-				mcpConfigPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'mcp.json');
+				mcpConfigPath = path.join(
+					os.homedir(),
+					'AppData',
+					'Roaming',
+					'Code',
+					'User',
+					'profiles',
+					'2944255d',
+					'mcp.json'
+				);
 			} else {
 				mcpConfigPath = path.join(os.homedir(), '.config', 'Code', 'User', 'mcp.json');
 			}
@@ -694,8 +716,12 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 				let checkArgs: string[];
 
 				if (platform === 'win32') {
-					checkCommand = 'tasklist';
-					checkArgs = ['/FI', `IMAGENAME eq ${path.basename(command)}.exe`];
+					checkCommand = 'powershell.exe';
+					checkArgs = [
+						'-NoProfile',
+						'-Command',
+						`(Get-CimInstance Win32_Process | ? {$_.CommandLine -match 'mcp_server.py'}) -ne $null`,
+					];
 				} else {
 					checkCommand = 'ps';
 					checkArgs = ['aux'];
@@ -712,14 +738,22 @@ class SidebarViewProvider implements vscode.WebviewViewProvider {
 
 				checkProcess.on('close', (code) => {
 					if (code === 0) {
-						// Check if the command appears in the process list
-						// Look for the command or key parts of it
-						const processName = args.length > 0 ? args[args.length - 1] : '';
-						if (processName) {
-							const hasProcess = output.includes(processName);
-							resolve(hasProcess);
+						if (platform === 'win32') {
+							if (output.trim().toLowerCase().includes('false')) {
+								resolve(false);
+							} else if (output.includes('python.exe') || output.includes('python3.exe')) {
+								resolve(true);
+							}
 						} else {
-							resolve(false);
+							// Check if the command appears in the process list
+							// Look for the command or key parts of it
+							const processName = args.length > 0 ? args[args.length - 1] : '';
+							if (processName) {
+								const hasProcess = output.includes(processName);
+								resolve(hasProcess);
+							} else {
+								resolve(false);
+							}
 						}
 					} else {
 						// If we can't check, assume not connected to be safe
