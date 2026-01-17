@@ -162,37 +162,76 @@ async def component_exists(component_name: str) -> dict[str, bool]:
 
 
 @app.get(
-    "/prompts/metadata-generation",
-    response_class=PlainTextResponse,
-    tags=["Prompts"],
-    summary="Get metadata generation prompt",
-    description="Returns the metadata generation prompt template used for creating component documentation.",
-    responses={
-        404: {"model": ErrorResponse, "description": "Prompt file not found"},
-    },
+	"/prompts/metadata-generation",
+	response_class=PlainTextResponse,
+	tags=["Prompts"],
+	summary="Get metadata generation prompt",
+	description="Returns the metadata generation prompt template used for creating component documentation.",
+	responses={
+		404: {"model": ErrorResponse, "description": "Prompt file not found"},
+	},
 )
 async def get_metadata_generation_prompt() -> str:
-    """Get the metadata generation prompt template."""
-    # Get the directory where this file is located
-    current_file = Path(__file__).resolve()
-    server_dir = current_file.parent
-    # Go up to vision2ui-server root, then to prompts directory
-    prompts_dir = server_dir.parent / "prompts"
-    prompt_file = prompts_dir / "metadata-generation-prompt.md"
+	"""Get the metadata generation prompt template."""
+	# Get the directory where this file is located
+	current_file = Path(__file__).resolve()
+	server_dir = current_file.parent
+	# Go up to vision2ui-server root, then to prompts directory
+	prompts_dir = server_dir.parent / "prompts"
+	prompt_file = prompts_dir / "metadata-generation-prompt.md"
 
-    if not prompt_file.exists():
-        raise HTTPException(
-            status_code=404, detail=f"Prompt file not found at: {prompt_file}"
-        )
+	if not prompt_file.exists():
+		raise HTTPException(
+			status_code=404, detail=f"Prompt file not found at: {prompt_file}"
+		)
 
-    try:
-        with open(prompt_file, "r", encoding="utf-8") as f:
-            content = f.read()
-        return content
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read prompt file: {str(e)}"
-        )
+	try:
+		with open(prompt_file, "r", encoding="utf-8") as f:
+			content = f.read()
+		return content
+	except Exception as e:
+		raise HTTPException(
+			status_code=500, detail=f"Failed to read prompt file: {str(e)}"
+		)
+
+
+@app.get(
+	"/prompts/component-usage-guide",
+	response_class=PlainTextResponse,
+	tags=["Prompts"],
+	summary="Get component usage guide",
+	description="Returns the component usage guide for AI agents on how to use components from the @fil-react-components library.",
+	responses={
+		404: {"model": ErrorResponse, "description": "Guide file not found"},
+	},
+)
+async def get_component_usage_guide() -> str:
+	"""Get the component usage guide for AI agents.
+
+	Returns the complete guide on how to use components from the
+	@fil-react-components library, including structure, styling guidelines,
+	responsive design, and best practices.
+	"""
+	# Get the directory where this file is located
+	current_file = Path(__file__).resolve()
+	server_dir = current_file.parent
+	# Go up to vision2ui-server root, then to prompts directory
+	prompts_dir = server_dir.parent / "prompts"
+	guide_file = prompts_dir / "how-to-use-component.md"
+
+	if not guide_file.exists():
+		raise HTTPException(
+			status_code=404, detail=f"Component usage guide not found at: {guide_file}"
+		)
+
+	try:
+		with open(guide_file, "r", encoding="utf-8") as f:
+			content = f.read()
+		return content
+	except Exception as e:
+		raise HTTPException(
+			status_code=500, detail=f"Failed to read component usage guide: {str(e)}"
+		)
 
 
 def run(host: str = "0.0.0.0", port: int = 9400) -> None:

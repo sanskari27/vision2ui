@@ -6,7 +6,11 @@ React UI component library documentation.
 """
 
 from mcp.server.fastmcp import FastMCP
-from tools import get_component_content, list_components
+from tools import (
+	get_component_content,
+	get_component_usage_guide,
+	list_components,
+)
 
 # Create an MCP server instance named "vision2ui"
 mcp = FastMCP("vision2ui")
@@ -14,6 +18,7 @@ mcp = FastMCP("vision2ui")
 # Register tools from the tools module
 mcp.tool()(list_components)
 mcp.tool()(get_component_content)
+mcp.tool()(get_component_usage_guide)
 
 
 def run() -> None:

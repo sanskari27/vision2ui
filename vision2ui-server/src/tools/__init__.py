@@ -8,6 +8,7 @@ the same underlying instance.
 """
 
 from .get_component_content import get_component_content
+from .get_component_usage_guide import get_component_usage_guide
 from .list_components import list_components
 
-__all__ = ["list_components", "get_component_content"]
+__all__ = ["list_components", "get_component_content", "get_component_usage_guide"]
